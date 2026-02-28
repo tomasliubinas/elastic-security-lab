@@ -1,0 +1,9 @@
+# Environment file — contains passwords and generated tokens
+.env
+
+# Downloaded agent tarball and extracted directory
+elastic-agent-*.tar.gz
+elastic-agent-*/
+
+# Exported certs
+certs/

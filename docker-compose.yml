@@ -1,0 +1,117 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Elastic Security Lab — no TLS, HTTP everywhere (local lab only)
+# Fleet Server uses INSECURE_HTTP so no certs are needed.
+# Service token + policy are pre-created by start.sh before fleet-server starts.
+# ─────────────────────────────────────────────────────────────────────────────
+
+volumes:
+  esdata:
+  kibanadata:
+
+networks:
+  elastic:
+    driver: bridge
+
+services:
+
+  # ── ELASTICSEARCH ──────────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: elasticsearch
+    networks: [elastic]
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "${ES_PORT}:9200"
+    environment:
+      node.name: elasticsearch
+      cluster.name: ${CLUSTER_NAME}
+      discovery.type: single-node
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      bootstrap.memory_lock: "true"
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.security.transport.ssl.enabled: "false"
+      xpack.license.self_generated.type: ${LICENSE}
+      xpack.security.authc.api_key.enabled: "true"
+    mem_limit: ${ES_MEM_LIMIT}
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          curl -sf -u elastic:${ELASTIC_PASSWORD} \
+            http://localhost:9200/_cluster/health | grep -qE '"status":"(green|yellow)"'
+      interval: 10s
+      timeout: 10s
+      retries: 60
+
+  # ── KIBANA ─────────────────────────────────────────────────────────────────
+  kibana:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kibana
+    networks: [elastic]
+    volumes:
+      - kibanadata:/usr/share/kibana/data
+    ports:
+      - "${KIBANA_PORT}:5601"
+    environment:
+      SERVERNAME: kibana
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD}
+      XPACK_SECURITY_ENCRYPTIONKEY: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+      XPACK_REPORTING_ENCRYPTIONKEY: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+      # macOS: Docker containers cannot reach the host via the bridge gateway.
+      # Use host.docker.internal which Docker Desktop resolves to the Mac host.
+      # Agents run on the Mac host, so they reach Fleet Server via localhost
+      XPACK_FLEET_AGENTS_FLEET_SERVER_HOSTS: '["http://localhost:${FLEET_PORT}"]'
+      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://localhost:${ES_PORT}"]'
+    mem_limit: ${KB_MEM_LIMIT}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -sf http://localhost:5601/api/status | grep -q '"level":"available"'
+      interval: 10s
+      timeout: 10s
+      retries: 60
+
+  # ── FLEET SERVER ───────────────────────────────────────────────────────────
+  # Service token + policy ID are injected from .env by start.sh before this
+  # container is started.
+  fleet-server:
+    depends_on:
+      kibana:
+        condition: service_healthy
+    image: docker.elastic.co/elastic-agent/elastic-agent:${STACK_VERSION}
+    container_name: fleet-server
+    networks: [elastic]
+    ports:
+      - "${FLEET_PORT}:8220"
+    user: root
+    environment:
+      FLEET_SERVER_ENABLE: "1"
+      FLEET_SERVER_INSECURE_HTTP: "true"
+      FLEET_SERVER_ELASTICSEARCH_HOST: http://elasticsearch:9200
+      FLEET_SERVER_ELASTICSEARCH_INSECURE: "true"
+      FLEET_SERVER_PORT: "8220"
+      FLEET_SERVER_HOST: "0.0.0.0"
+      FLEET_SERVER_SERVICE_TOKEN: ${FLEET_SERVER_SERVICE_TOKEN}
+      FLEET_SERVER_POLICY_ID: ${FLEET_SERVER_POLICY_ID}
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
+    mem_limit: ${FS_MEM_LIMIT}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -sf http://localhost:8220/api/status | grep -q HEALTHY
+      interval: 15s
+      timeout: 10s
+      retries: 60
