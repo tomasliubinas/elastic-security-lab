@@ -31,17 +31,17 @@ graph TD
     end
 
     subgraph Mac Host
-        AG[Elastic Agent]
-        ED[Elastic Defend\nEDR / malware detection]
-        SY[System Integration\nauth logs · syslog · metrics]
+        subgraph Elastic Agent
+            ED[Elastic Defend\nEDR / malware detection]
+            SY[System Integration\nauth logs · syslog · metrics]
+        end
     end
 
     KB -->|read / write| ES
     FS -->|read policies\nwrite check-ins| ES
-    AG -->|events & logs| ES
-    AG -->|policy / check-in| FS
-    AG --> ED
-    AG --> SY
+    ED -->|events & logs| ES
+    SY -->|events & logs| ES
+    ED -->|policy / check-in| FS
 ```
 
 ## Requirements
