@@ -22,6 +22,9 @@ wait_healthy() {
   echo ""; die "Timed out waiting for $name"
 }
 
+info "Stopping any running containers..."
+docker compose down
+
 info "Starting stack..."
 docker compose up -d --remove-orphans
 

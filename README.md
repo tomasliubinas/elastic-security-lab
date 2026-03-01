@@ -26,10 +26,10 @@ The solution is built from four components, all running locally:
 ┌──────────────────────────────────────────────────────────────┐
 │  Docker (elastic-security network)                           │
 │                                                              │
-│  ┌───────────────┐          ┌──────────┐                    │
-│  │ Elasticsearch │◄─────────│  Kibana  │                    │
-│  │  :9200 (HTTP) │          │  :5601   │                    │
-│  └───────────────┘          └──────────┘                    │
+│  ┌───────────────┐          ┌──────────┐                     │
+│  │ Elasticsearch │◄─────────│  Kibana  │                     │
+│  │  :9200 (HTTP) │          │  :5601   │                     │
+│  └───────────────┘          └──────────┘                     │
 │         ▲                                                    │
 │         │ reads policies / writes check-ins & events         │
 │  ┌───────────────┐                                           │
@@ -40,8 +40,7 @@ The solution is built from four components, all running locally:
          ▲                        ▲
          │ events (logs/EDR)      │ policy / check-in
 ┌─────────────────────────────────────────────────────────────┐
-│  Mac Host                                                   │
-│  Elastic Agent (/Library/Elastic/Agent)                     │
+│  Mac Host — Elastic Agent (/Library/Elastic/Agent)          │
 │   ├── Elastic Defend  (EDR / malware detection)             │
 │   └── System          (auth logs, syslog, metrics)          │
 └─────────────────────────────────────────────────────────────┘
@@ -58,6 +57,8 @@ The solution is built from four components, all running locally:
 ### First time setup
 
 ```bash
+cp .env.example .env     # create your local config (gitignored)
+# edit .env to change passwords if desired
 docker compose down -v   # wipe any previous data (skip on a fresh clone)
 ./setup.sh               # full setup: stack + agent install (~10 min)
 ```
@@ -91,18 +92,23 @@ After `setup.sh` completes (or if you need to re-enroll manually):
 
 1. Open Kibana → **☰ → Management → Fleet → Agents → Add agent**
 2. Select **Create a new agent policy** → name it `Mac Monitoring Policy` → Create
-3. Kibana shows an install command. **Do not use it as-is** — replace the URL with `http://localhost:8220` and add `--insecure`:
+3. `setup.sh` downloads Elastic Agent automatically into this directory — find it with:
+```bash
+ls -d elastic-agent-*/
+```
+4. Kibana shows an install command. **Do not use it as-is** — replace the URL with `http://localhost:8220` and add `--insecure`:
 
 ```bash
 cd /path/to/ElasticSecurity
 
-sudo ./elastic-agent-8.17.x-darwin-aarch64/elastic-agent install \
+sudo ./<agent-dir>/elastic-agent install \
   --url=http://localhost:8220 \
   --enrollment-token=<TOKEN FROM KIBANA> \
   --insecure
 ```
 
-> Use `aarch64` for Apple Silicon Macs, `x86_64` for Intel.
+Where `<agent-dir>` is the directory from step 3, e.g. `elastic-agent-8.17.0-darwin-aarch64` (Apple Silicon) or `elastic-agent-8.17.0-darwin-x86_64` (Intel).
+
 > The `--insecure` flag is required because Fleet Server runs without TLS in this lab setup.
 
 4. Click **Confirm agent enrollment** in Kibana
@@ -118,8 +124,9 @@ sudo ./elastic-agent-8.17.x-darwin-aarch64/elastic-agent install \
 
 ## Scripts
 
-| Script | Purpose |
+| File | Purpose |
 |---|---|
+| `.env.example` | Template for environment config — copy to `.env` before first run |
 | `./setup.sh` | Full first-time setup (or after data wipe) |
 | `./restart.sh` | Start an already-configured stack |
 | `./stop.sh` | Stop containers, preserve data |
