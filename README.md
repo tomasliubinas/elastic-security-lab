@@ -22,26 +22,28 @@ The solution is built from four components, all running locally:
 
 ## Architecture
 
-```mermaid
-graph TD
-    subgraph Docker
-        ES[Elasticsearch\n:9200]
-        KB[Kibana\n:5601]
-        FS[Fleet Server\n:8220]
-    end
-
-    subgraph Mac Host
-        subgraph Elastic Agent
-            ED[Elastic Defend\nEDR / malware detection]
-            SY[System Integration\nauth logs · syslog · metrics]
-        end
-    end
-
-    KB -->|read / write| ES
-    FS -->|read policies\nwrite check-ins| ES
-    ED -->|events & logs| ES
-    SY -->|events & logs| ES
-    ED -->|policy / check-in| FS
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Docker (elastic-security network)                           │
+│                                                              │
+│  ┌───────────────┐          ┌──────────┐                     │
+│  │ Elasticsearch │◄─────────│  Kibana  │                     │
+│  │  :9200 (HTTP) │          │  :5601   │                     │
+│  └───────────────┘          └──────────┘                     │
+│         ▲                                                    │
+│         │ reads policies / writes check-ins & events         │
+│  ┌───────────────┐                                           │
+│  │ Fleet Server  │                                           │
+│  │  :8220 (HTTP) │                                           │
+│  └───────────────┘                                           │
+└──────────────────────────────────────────────────────────────┘
+         ▲                        ▲
+         │ events (logs/EDR)      │ policy / check-in
+┌─────────────────────────────────────────────────────────────┐
+│  Mac Host — Elastic Agent (/Library/Elastic/Agent)          │
+│   ├── Elastic Defend  (EDR / malware detection)             │
+│   └── System          (auth logs, syslog, metrics)          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Requirements
