@@ -22,29 +22,26 @@ The solution is built from four components, all running locally:
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Docker (elastic-security network)                           │
-│                                                              │
-│  ┌───────────────┐          ┌──────────┐                     │
-│  │ Elasticsearch │◄─────────│  Kibana  │                     │
-│  │  :9200 (HTTP) │          │  :5601   │                     │
-│  └───────────────┘          └──────────┘                     │
-│         ▲                                                    │
-│         │ reads policies / writes check-ins & events         │
-│  ┌───────────────┐                                           │
-│  │ Fleet Server  │                                           │
-│  │  :8220 (HTTP) │                                           │
-│  └───────────────┘                                           │
-└──────────────────────────────────────────────────────────────┘
-         ▲                        ▲
-         │ events (logs/EDR)      │ policy / check-in
-┌─────────────────────────────────────────────────────────────┐
-│  Mac Host                                                   │
-│  Elastic Agent (/Library/Elastic/Agent)                     │
-│   ├── Elastic Defend  (EDR / malware detection)             │
-│   └── System          (auth logs, syslog, metrics)          │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Docker
+        ES[Elasticsearch\n:9200]
+        KB[Kibana\n:5601]
+        FS[Fleet Server\n:8220]
+    end
+
+    subgraph Mac Host
+        AG[Elastic Agent]
+        ED[Elastic Defend\nEDR / malware detection]
+        SY[System Integration\nauth logs · syslog · metrics]
+    end
+
+    KB -->|read / write| ES
+    FS -->|read policies\nwrite check-ins| ES
+    AG -->|events & logs| ES
+    AG -->|policy / check-in| FS
+    AG --> ED
+    AG --> SY
 ```
 
 ## Requirements
