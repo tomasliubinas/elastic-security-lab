@@ -26,10 +26,10 @@ The solution is built from four components, all running locally:
 ┌──────────────────────────────────────────────────────────────┐
 │  Docker (elastic-security network)                           │
 │                                                              │
-│  ┌───────────────┐          ┌──────────┐                    │
-│  │ Elasticsearch │◄─────────│  Kibana  │                    │
-│  │  :9200 (HTTP) │          │  :5601   │                    │
-│  └───────────────┘          └──────────┘                    │
+│  ┌───────────────┐          ┌──────────┐                     │
+│  │ Elasticsearch │◄─────────│  Kibana  │                     │
+│  │  :9200 (HTTP) │          │  :5601   │                     │
+│  └───────────────┘          └──────────┘                     │
 │         ▲                                                    │
 │         │ reads policies / writes check-ins & events         │
 │  ┌───────────────┐                                           │
